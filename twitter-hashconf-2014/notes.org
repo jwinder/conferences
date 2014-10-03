@@ -1,0 +1,190 @@
+* Twitter #conf, April 2nd 2014, San Fran
+** apache mesos
+*** improving resource management (datacenter utilization)
+**** datacenter underutilization
+**** high jitter on app perf
+**** resources affecting perf
+**** used vs. reserved resources
+**** rightsizing apps is hard
+***** changes everytime software/platform changes
+**** app characteristics
+***** determine per app perf vs. resources relation
+***** use load prediction and reclaim unused resources
+***** monitor and adjust allocations dynamically
+**** current approach
+***** users specify resource reservations
+**** simplify life of user
+***** (switched slide)
+***** completion time for batch apps
+***** qps under latency constraint for user facing apps
+***** cluster manager translates perf targets to resource requirements
+***** looks like a classification problem
+****** heterogeneity
+****** interference
+****** scale up
+****** scale out
+**** Look into Quasar
+***** pluggable to mesos
+***** cloud scenario
+***** load prediction
+****** preduce near future resource usage
+****** current focus: cpu, memory
+****** network, disk usage
+***** wavelet transform based prediction
+***** classification based prediction
+***** quasar: be proactive w.r.t. state migration -- before heavy load arrives
+***** mesos: reclaim unused resources -- yield to heavy load
+**** demo
+***** memcahced, hadoop, storm, cassandra, spark, single-node
+**** resource reservation --> perf centric cluster mgmt
+*** mesos, hubspot and the singularity by @tpetr
+**** hubspot -- internet marketing company
+**** approx. 500 deployables, 100 prod deploys/day, 90 engineers
+**** deploy process
+***** git push triggers jenkins
+***** upload to s3
+***** extract & run
+***** update load balancers as needed
+***** python script to push to prod
+**** engineers are responsible for their own services (deployment, resources, multi-tenant, etc)
+***** lot of trust, first day engineers have their own amazon account (yikes)
+**** marathon, chronos
+**** singularity
+***** long running jobs
+***** zk for state, queuing, leader election
+***** mysql
+***** request: req to exec tasks (deploys, cron jobs, etc)
+****** POST /singularity/v1/requests
+**** baragon (getting services up)
+***** receives mesos task update, updates LBs as needed
+***** health checks for services (they run nginx) -- haproxy would do it by default?
+**** rodan
+***** metrics collections
+***** rule evaluation
+***** alerting
+****** # overdue tasks, max task lag, time since last offer, slave resources
+**** mesos
+***** better quantify services
+***** fixed/reduced costs
+***** fault tolerance, isolation
+***** so damn cool
+***** their QA cluster is now $10k per month instead of fluctuating
+** scalding
+*** scalding 0.9, @posco
+**** scalding 0.9.1 released!
+**** more safer, faster joins
+***** how hard would it be for us to move to the typed api?
+**** more formats
+**** more matrices
+**** fewer warts
+**** type-safe joins in very few mapreduce steps!
+***** ex. of a three-way join in one mapreduce-step, with type safety
+**** what if one reducer takes too long to join? (curse of the last reducer)
+***** count-min-sketch -- keeps track of heaviest keys, can randomly send them to better reducers, not just one
+***** zero.sketch(args("reducers").toInt).join(one).map{case (k, (v0, v1)) => (k, v0, v1)}.write(TypedTsv[Int,Int,Int]("output-sketch"))
+**** added parquet + avro read/write
+**** matrices -- fast products
+***** abc ==> a(bc) or (ab)c?
+****** which side materializes the smallest matrix/?
+****** import mathetmatics.Matrix, automatically picks
+***** matrices over any type (ring)
+****** recommendations
+***** Disco & Dimsum operations
+**** what about monoids?
+***** use any monoids in the fields API
+***** .sum[Long]('clicks), etc
+**** warts removed
+***** typed api is really good
+*** building machine learning tools w/ scalding, @j_houg
+**** works at Deep Signal, previously at WibiData, contributed to Scalding
+**** kiji project
+**** technology is maturing
+***** hadoop -- hbase, cassandra
+**** reasons for using scalding
+***** easy for users
+****** initial startup cost (learning scala)
+***** easy to develop with
+***** collaborative community
+**** adopting scalding (and scala)
+***** good
+****** runnable tutorials
+****** existence of a repl
+****** good code examples
+***** could be improved
+****** scaladocs
+****** landing page for scalding
+****** document common patterns
+****** lunch break test
+**** user --> developer
+***** good
+****** supportive scalding community
+****** clear instructions
+****** effective scala (twitter scala school)
+***** could be improved
+****** github issue gardening
+****** 'newbie' tag
+****** regular meetups
+** finagle
+*** the finagle ecosystem
+**** extensible rpc
+***** implement a feature once ==> get the feature in every service and in every protocol
+**** easier to reason about services w/ shared abstractions
+***** unified feature set
+***** "can you turn on stats?"
+***** NOT "can you instrument your service?"
+**** finagle abstractions
+***** service
+****** trait service[-req,+rep] extends (req => future[rep])
+***** server
+****** trait server[req,rep] { def serve(addr: SocketAddress, underlying: Service[req,rep]): ListeningServer }
+***** client
+****** trit client[req,rep] { def newService(dest:Name,label:String): Service[req,rep]}
+**** stats collection
+***** stats on every req
+***** histograms of req latency, success rate, etc
+***** metrics, metrics everywhere from codahale
+**** distributed tracing
+***** sample a small # of requests
+***** see which upstreams are pummeling your service during an accident
+***** profiling is good for debugging avg latency
+***** tracing is good for debugging long tail latency
+****** distributed tracing not very easy
+****** look into Zipkin
+**** pipelining
+***** redis & memcached
+**** service discovery
+***** trait ListeningServer { def announce(addr: String): Future[Announcement] }
+***** zk internally
+***** adding finagle-serversets to your classpath enables zk
+**** what's next
+***** mux -- new protocol to layer on other protocols, e.g. thrift-mux
+****** discard, leasing, multiplexing, error encoding, ping, drain, initialization
+****** error encoding -- handle errors separately by just reading the first byte
+****** draining -- signals that a server will start draining, client knows how to stop sending requests
+****** leasing -- GC avoidance
+**** twitter.github.io/finagle
+**** @mnnakamura, github/mosesn
+*** finagle @sharethrough
+**** ad serving, auction based
+** parquet
+*** parquet at twitter, @J_, parquet.io
+**** Twitter's data
+***** 241M+ monthly active users, 500M tweets per day
+***** 100TB+ a day of compressed data
+***** Several 1K+ node hadoop clusters
+***** log collection pipeline
+***** processing tools
+***** logs on hdfs, thrift to store
+***** one scheme has 87 columns, up to 7 levels of nesting
+***** goal -- to have a state of the art column based storage avail across the hadoop platform
+****** but not tied to any framework in particular
+**** Columnar storage
+***** limits IO to data actually needed
+****** loads only columns needed to be accessed
+***** saves space
+****** compresses data (each column is compressed independently)
+****** type specific encodings
+**** github.com/Parquet/parquet-mr
+***** C++ and codegen in Cloudera Impala
+**** scans are linear in the # of columns (since they are indexed separately)
+**** huge savings in batch jobs that only need specific columns
